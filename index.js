@@ -7,6 +7,9 @@ const Book = require("./models/book.js");
 const User = require("./models/user.js");
 require('dotenv').config();
 
+app.use(express.json());  
+app.use(express.urlencoded({extended:true}));
+
 main()
 .then((res)=>{
     console.log("connection successful")
@@ -14,9 +17,10 @@ main()
 .catch(err => console.log(err));
 
 async function main() {
-  await mongoose.connect('mongodb://127.0.0.1:27017/library');
+  await mongoose.connect(process.env.MONGO_URL);
 }
 
+//Post : Book Route
 app.post('/books', async (req, res) => {
     try {
       const { title, author, genre, status } = req.body;
@@ -24,10 +28,12 @@ app.post('/books', async (req, res) => {
       await book.save();
       res.status(201).json(book);
     } catch (error) {
-      res.status(400).json({ error: 'Error creating book' });
+      console.error('Error creating book:', error.message); 
+      res.status(400).json({ error: 'Error creating book', details: error.message }); 
     }
   });
 
+//Get : Book Filter
 app.get('/books', async (req, res) => {
 try {
     const { genre, status } = req.query;
@@ -41,6 +47,7 @@ try {
 }
 });
 
+//Get : Book by ID
 app.get('/books/:id', async (req, res) => {
 try {
     const book = await Book.findById(req.params.id);
@@ -51,6 +58,7 @@ try {
 }
 });
 
+//Put : Update Book by ID
 app.put('/books/:id', async (req, res) => {
 try {
     const book = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
@@ -61,25 +69,22 @@ try {
 }
 });
 
+//Patch : Update Book status
 app.patch('/books/:id/status', async (req, res) => {
 try {
     const { status } = req.body;
-    if (!['available', 'borrowed', 'self-owned'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-    }
-    const book = await Book.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    const book = await Book.findByIdAndUpdate(req.params.id,{ status },{ new: true, runValidators: true });
     if (!book) return res.status(404).json({ error: 'Book not found' });
     res.json(book);
 } catch (error) {
-    res.status(400).json({ error: 'Error updating book status' });
+    res.status(400).json({ error: 'Error updating book status', details: error.message });
 }
 });
 
-
+//Delete : Delete book
 app.delete('/books/:id', async (req, res) => {
 try {
     const book = await Book.findByIdAndDelete(req.params.id);
-    if (!book) return res.status(404).json({ error: 'Book not found' });
     res.json({ message: 'Book deleted successfully' });
 } catch (error) {
     res.status(500).json({ error: 'Error deleting book' });

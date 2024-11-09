@@ -35,8 +35,11 @@ app.post('/register', async (req, res) => {
 try {
     const { username, password } = req.body;
     const user = new User({ username, password });
+    const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ error: 'User already registered' });
+        }
     await user.save();
-
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(201).json({ message: 'User registered'});
 } catch (error) {

@@ -20,18 +20,54 @@ async function main() {
   await mongoose.connect(process.env.MONGO_URL);
 }
 
-//Post : Book Route
-app.post('/books', async (req, res) => {
-    try {
-      const { title, author, genre, status } = req.body;
-      const book = new Book({ title, author, genre, status });
-      await book.save();
-      res.status(201).json(book);
-    } catch (error) {
-      console.error('Error creating book:', error.message); 
-      res.status(400).json({ error: 'Error creating book', details: error.message }); 
+const authenticateToken = (req, res, next) => {
+    const token = req.header("Authorization")?.split(" ")[1];
+    if (!token) return res.status(403).json({ error: "Token missing" });
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+//Post : Resiter New User
+app.post('/register', async (req, res) => {
+try {
+    const { username, password } = req.body;
+    const user = new User({ username, password });
+    await user.save();
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ message: 'User registered', token });
+} catch (error) {
+    res.status(400).json({ error: 'Registration failed' });
+}
+});
+
+//Post : Login Route
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (!user || !(await user.comparePassword(password))) {
+        return res.status(401).json({ error: 'Invalid credentials' });
     }
-  });
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token });
+    });
+
+//Post : Book Route
+app.post('/books', authenticateToken, async (req, res) => {
+try {
+    const { title, author, genre, status } = req.body;
+    const book = new Book({ title, author, genre, status });
+    await book.save();
+    res.status(201).json(book);
+} catch (error) {
+    console.error('Error creating book:', error.message); 
+    res.status(400).json({ error: 'Error creating book', details: error.message }); 
+}
+});
 
 //Get : Book Filter
 app.get('/books', async (req, res) => {
@@ -48,7 +84,7 @@ try {
 });
 
 //Get : Book by ID
-app.get('/books/:id', async (req, res) => {
+app.get('/books/:id',authenticateToken, async (req, res) => {
 try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ error: 'Book not found' });
@@ -59,7 +95,7 @@ try {
 });
 
 //Put : Update Book by ID
-app.put('/books/:id', async (req, res) => {
+app.put('/books/:id',authenticateToken, async (req, res) => {
 try {
     const book = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!book) return res.status(404).json({ error: 'Book not found' });
@@ -70,7 +106,7 @@ try {
 });
 
 //Patch : Update Book status
-app.patch('/books/:id/status', async (req, res) => {
+app.patch('/books/:id/status',authenticateToken, async (req, res) => {
 try {
     const { status } = req.body;
     const book = await Book.findByIdAndUpdate(req.params.id,{ status },{ new: true, runValidators: true });
@@ -82,7 +118,7 @@ try {
 });
 
 //Delete : Delete book
-app.delete('/books/:id', async (req, res) => {
+app.delete('/books/:id',authenticateToken, async (req, res) => {
 try {
     const book = await Book.findByIdAndDelete(req.params.id);
     res.json({ message: 'Book deleted successfully' });

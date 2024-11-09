@@ -38,7 +38,7 @@ try {
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(201).json({ message: 'User registered', token });
+    res.status(201).json({ message: 'User registered'});
 } catch (error) {
     res.status(400).json({ error: 'Registration failed' });
 }

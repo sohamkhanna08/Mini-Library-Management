@@ -16,3 +16,6 @@ This is a backend API application for managing a library's inventory. It enables
 - **JWT (jsonwebtoken)**: Manages user authentication tokens.
 - **bcrypt**: Hashes passwords securely.
 
+## Postman Console
+
+![Library Management API](https://github.com/user-attachments/assets/f207a689-313a-49a4-80b4-d799e8838190)
